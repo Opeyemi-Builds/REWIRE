@@ -8,11 +8,11 @@ REWIRE is an **anti-fraud EdTech and opportunity platform designed for Nigeria**
 
 The platform adapts the proven structure of Hong Kong's public anti-scam education model—**real-world scam cases, educational content, interactive quizzes, practical scenarios, and certification**—and extends it into a new direction:
 
-**Teach → Simulate → Prove → Rewire → Earn.**
+**Teach → Simulate → AI Personalize → Prove → Rewire → API Enable → Earn.**
 
 Rather than treating fraud only as a law-enforcement problem, REWIRE addresses one of the underlying drivers of digital fraud among young people: **the absence of accessible, credible pathways from digital skills and fraud exposure into legitimate economic opportunity.**
 
-REWIRE gives users a structured way to understand how fraud works, recognize and prevent it, demonstrate fraud-prevention skills, earn verified credentials, and eventually connect those skills to legitimate work.
+REWIRE gives users a structured way to understand how fraud works, recognize and prevent it, demonstrate fraud-prevention skills, earn verified credentials, and eventually connect those skills to legitimate work—while embedding AI-powered personalization and a real financial-technology integration using **Ecobank APIs** to support safer digital financial journeys.
 
 ---
 
@@ -92,13 +92,17 @@ Fraud Exposure
       ↓
 Structured Education
       ↓
+AI-Personalized Learning Path
+      ↓
 Practical Simulation
       ↓
 Skill Verification
       ↓
 Credential
       ↓
-Legitimate Opportunity
+Ecobank API-driven risk & financial-safety profile
+      ↓
+Legitimate Opportunity / credit or product eligibility journey
       ↓
 Fraud Prevention
 ```
@@ -744,6 +748,36 @@ All generated scenarios remain within a controlled educational framework.
 ### Learning Assistant
 
 A conversational assistant can explain why an answer was correct or incorrect without revealing operational instructions for committing fraud.
+
+### AI + Ecobank API Workflow
+
+The AI layer powers the user journey by detecting weak areas, personalizing lesson paths, and generating scenario variations that are relevant to the learner's behaviour and level of understanding. This intelligence can then be connected to a financial technology workflow using **Ecobank APIs**, enabling a more complete digital financial safety journey.
+
+A sample workflow is:
+
+```text
+Young user exposed to digital fraud
+      ↓
+REWIRE onboarding + learning assessment
+      ↓
+AI identifies knowledge gaps
+      ↓
+Personalized anti-fraud curriculum
+      ↓
+Scenario-based fraud detection tests
+      ↓
+Certification + fraud prevention score
+      ↓
+Ecobank API reads user profile, financial behavior, and risk signals
+      ↓
+Safe eligibility check for product or credit portfolio decisions
+      ↓
+User receives a safer, lower-risk financial product or portfolio recommendation
+      ↓
+Safer digital financial behaviour
+```
+
+This allows AI to improve learning quality while Ecobank's API infrastructure provides real, practical financial-context support—such as a digital credit portfolio, risk-aware user segmentation, or customer eligibility checks—without turning REWIRE into a simple partnership story. It becomes a genuine technical integration where REWIRE contributes fraud-awareness and user trust signals, while Ecobank contributes the financial systems needed to act on those insights.
 
 ---
 
