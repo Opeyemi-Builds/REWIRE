@@ -1,4 +1,4 @@
-import { supabase } from '../config/db.js';
+import { supabase, supabaseAdmin } from '../config/db.js';
 
 export const Certificate = {
   async create({ userId, score }) {
@@ -6,7 +6,10 @@ export const Certificate = {
     // verification page/route once one exists.
     const verificationUrl = `https://rewire.app/verify/${userId}`;
 
-    const { data, error } = await supabase
+    // Uses the admin client because the `certificates` table has RLS enabled
+    // with no INSERT policy (see config/schema.sql) - issuance is a trusted
+    // server-side decision, not a user-initiated write.
+    const { data, error } = await supabaseAdmin
       .from('certificates')
       .insert({ user_id: userId, score, verification_url: verificationUrl })
       .select()

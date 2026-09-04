@@ -1,24 +1,26 @@
-import { supabase } from '../config/db.js';
+import * as authService from '../services/authService.js';
 
-// Equivalent to a FastAPI dependency like `get_current_user`, added to a
-// route via `Depends(...)`. Here, you just add `requireAuth` into the
-// route's middleware chain instead.
-export async function requireAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
+// Protects routes: reads the Bearer token, resolves the Supabase user, and
+// attaches it to req.user. The Express equivalent of FastAPI's
+// Depends(get_current_user).
+export const requireAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'Access token is required' });
+    }
+
+    req.user = await authService.getUser(token);
+
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid or expired access token' });
   }
-
-  const token = authHeader.split(' ')[1];
-  const { data, error } = await supabase.auth.getUser(token);
-
-  if (error || !data?.user) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-
-  // Attach the authenticated user to the request - same idea as FastAPI's
-  // `current_user: User = Depends(get_current_user)` parameter.
-  req.user = data.user;
-  next();
-}
+};
