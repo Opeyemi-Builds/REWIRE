@@ -43,4 +43,30 @@ export const Assessment = {
     if (error) throw Object.assign(new Error(error.message), { status: 500 });
     return data;
   },
+
+  // Each attempt with its scenario's skill category attached - powers the
+  // per-category Fraud Prevention Skill Profile. Relies on the FK
+  // assessments.scenario_id -> scenarios.id for the embedded join.
+  async findByUserWithCategory(userId) {
+    const { data, error } = await supabaseAdmin
+      .from('assessments')
+      .select('score, correct, scenario_id, scenarios(category)')
+      .eq('user_id', userId);
+    if (error) throw Object.assign(new Error(error.message), { status: 500 });
+    return data;
+  },
+
+  // Attempt history with enough scenario context to render a review list.
+  async findHistoryByUser(userId) {
+    const { data, error } = await supabaseAdmin
+      .from('assessments')
+      .select(
+        'id, selected_answer, correct, score, created_at, ' +
+          'scenarios(id, title, category, difficulty)'
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw Object.assign(new Error(error.message), { status: 500 });
+    return data;
+  },
 };

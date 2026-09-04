@@ -9,7 +9,7 @@ export const Scenario = {
     // they're only revealed after the user submits an answer.
     const { data, error } = await supabaseAdmin
       .from('scenarios')
-      .select('id, module_id, title, context, options, difficulty')
+      .select('id, module_id, title, context, options, difficulty, category')
       .eq('module_id', moduleId);
     if (error) throw Object.assign(new Error(error.message), { status: 500 });
     return data;

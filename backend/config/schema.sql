@@ -36,8 +36,38 @@ create table if not exists scenarios (
   correct_answer text not null,  -- e.g. "C"
   explanation text,
   difficulty text default 'easy',
+  -- Skill dimension this scenario exercises. Drives the per-category Fraud
+  -- Prevention Skill Profile (see services/scoringService.js). Constrained to
+  -- the five canonical skill areas from the product spec so the profile always
+  -- has a fixed, meaningful set of axes.
+  category text not null default 'fraud_awareness'
+    check (category in (
+      'fraud_awareness',
+      'social_engineering',
+      'digital_safety',
+      'scenario_analysis',
+      'critical_thinking'
+    )),
   created_at timestamp with time zone default now()
 );
+
+-- For databases created before `category` existed: add it idempotently.
+alter table scenarios add column if not exists category text not null default 'fraud_awareness';
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'scenarios_category_check'
+  ) then
+    alter table scenarios add constraint scenarios_category_check
+      check (category in (
+        'fraud_awareness',
+        'social_engineering',
+        'digital_safety',
+        'scenario_analysis',
+        'critical_thinking'
+      ));
+  end if;
+end $$;
 
 create table if not exists assessments (
   id uuid default gen_random_uuid() primary key,
