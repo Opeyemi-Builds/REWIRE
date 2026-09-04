@@ -1,4 +1,6 @@
 import { Assessment } from '../models/Assessment.js';
+import { Module } from '../models/Module.js';
+import { Scenario } from '../models/Scenario.js';
 import { User } from '../models/User.js';
 
 const CERTIFICATION_THRESHOLD = 70; // % score needed to unlock certification
@@ -125,3 +127,40 @@ export async function computeOverallScore(userId) {
   const attempts = await Assessment.findByUserWithCategory(userId);
   return aggregate(attempts);
 }
+
+// Read-only: per-module completion, derived from which scenarios the learner
+// has answered. Fills the `completedModules` view in the learner data model.
+export async function computeModuleProgress(userId) {
+  const [modules, scenarios, answeredIds] = await Promise.all([
+    Module.findAll(),
+    Scenario.findAllBrief(),
+    Assessment.findAnsweredScenarioIds(userId),
+  ]);
+
+  const answered = new Set(answeredIds);
+  const totals = {};
+  const done = {};
+  for (const s of scenarios) {
+    totals[s.module_id] = (totals[s.module_id] || 0) + 1;
+    if (answered.has(s.id)) done[s.module_id] = (done[s.module_id] || 0) + 1;
+  }
+
+  const perModule = modules.map((m) => {
+    const total = totals[m.id] || 0;
+    const answeredCount = done[m.id] || 0;
+    return {
+      moduleId: m.id,
+      title: m.title,
+      totalScenarios: total,
+      answered: answeredCount,
+      completed: total > 0 && answeredCount >= total,
+      percentComplete: pct(answeredCount, total),
+    };
+  });
+
+  return {
+    modules: perModule,
+    completedModules: perModule.filter((m) => m.completed).map((m) => m.moduleId),
+  };
+}
+

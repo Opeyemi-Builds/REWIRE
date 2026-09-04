@@ -1,7 +1,11 @@
 import { asyncHandler, successResponse } from '../utils/helpers.js';
 import { Scenario } from '../models/Scenario.js';
 import { Assessment } from '../models/Assessment.js';
-import { submitAnswer, computeOverallScore } from '../services/scoringService.js';
+import {
+  submitAnswer,
+  computeOverallScore,
+  computeModuleProgress,
+} from '../services/scoringService.js';
 
 // POST /api/assessments/submit
 // body: { scenarioId, selectedAnswer }
@@ -53,4 +57,11 @@ export const getMySkillProfile = asyncHandler(async (req, res) => {
 export const getMyHistory = asyncHandler(async (req, res) => {
   const history = await Assessment.findHistoryByUser(req.user.id);
   successResponse(res, history);
+});
+
+// GET /api/assessments/progress
+// Per-module completion, derived from the learner's answered scenarios.
+export const getMyProgress = asyncHandler(async (req, res) => {
+  const progress = await computeModuleProgress(req.user.id);
+  successResponse(res, progress);
 });

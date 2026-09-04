@@ -26,4 +26,14 @@ export const Scenario = {
     if (error) throw Object.assign(new Error(error.message), { status: 404 });
     return data;
   },
+
+  // Just id + module_id for every scenario - used to compute per-module
+  // progress without pulling full records.
+  async findAllBrief() {
+    const { data, error } = await supabaseAdmin
+      .from('scenarios')
+      .select('id, module_id');
+    if (error) throw Object.assign(new Error(error.message), { status: 500 });
+    return data;
+  },
 };

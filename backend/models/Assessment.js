@@ -69,4 +69,14 @@ export const Assessment = {
     if (error) throw Object.assign(new Error(error.message), { status: 500 });
     return data;
   },
+
+  // The scenario ids this user has already answered - used for module progress.
+  async findAnsweredScenarioIds(userId) {
+    const { data, error } = await supabaseAdmin
+      .from('assessments')
+      .select('scenario_id')
+      .eq('user_id', userId);
+    if (error) throw Object.assign(new Error(error.message), { status: 500 });
+    return data.map((row) => row.scenario_id);
+  },
 };
