@@ -1,8 +1,12 @@
-import { supabase } from '../config/db.js';
+// This backend is a trusted server: it authenticates the user itself
+// (middleware/authMiddleware.js) and never forwards the user's JWT to Supabase,
+// so the anon client would count as `anon` and be blocked by RLS. Reads go
+// through the admin client; RLS remains the guard for any direct client access.
+import { supabaseAdmin } from '../config/db.js';
 
 export const Module = {
   async findAll() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('modules')
       .select('*')
       .order('order_index', { ascending: true });
@@ -11,7 +15,7 @@ export const Module = {
   },
 
   async findById(id) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('modules')
       .select('*')
       .eq('id', id)
