@@ -2,6 +2,11 @@ import { Certificate } from '../models/Certificate.js';
 import { computeOverallScore } from './scoringService.js';
 
 export async function issueCertificateIfEligible(userId) {
+  // Idempotent: if the user already has a certificate, return it instead of
+  // issuing a duplicate.
+  const existing = await Certificate.findByUser(userId);
+  if (existing) return existing;
+
   const { percentage, eligibleForCertificate } = await computeOverallScore(userId);
 
   if (!eligibleForCertificate) {
