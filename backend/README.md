@@ -53,7 +53,7 @@ Node.js + Express REST API for REWIRE, using Supabase for auth and the database 
 | GET | `/api/assessments/progress` | Yes | Per-module completion + list of completed module ids |
 | POST | `/api/certificates/issue` | Yes | Issues certificate if score ≥ 70% |
 | GET | `/api/certificates/me` | Yes | Get your latest certificate |
-| GET | `/api/ecobank/eligibility` | Yes | Mocked Ecobank eligibility check |
+| GET | `/api/ecobank/eligibility` | Yes | Financial-safety signal from the learner's fraud-prevention score; enriched with a live Ecobank Account Enquiry when Ecobank is configured |
 
 All protected routes require an `Authorization: Bearer <access_token>` header — the token comes back from `/api/auth/login`.
 
@@ -63,7 +63,7 @@ All protected routes require an `Authorization: Bearer <access_token>` header �
 - ✅ **Assessment engine** — grades answers, enforces one attempt per scenario, and produces a per-category **Fraud Prevention Skill Profile** (5 skill axes), overall score, learner level, attempt history, and per-module progress
 - ✅ **Modules, scenarios, certificates, ecobank** — working against the schema, using placeholder scoring logic (flat 10 pts/correct answer) — tune once real scenario data lands
 - 🔲 **AI personalization** (`services/aiService.js`) — mocked response, swap in a real LLM call
-- 🔲 **Real Ecobank integration** (`services/ecobankService.js`) — mocked, swap for `/integrations/ecobank/ecobankAdapter.js` once that's ready
+- 🟡 **Ecobank integration** (`services/ecobankService.js`) — real Azure APIM client is built (auth + token caching, Account Enquiry, Bill Payment). It goes live once the sandbox config values are filled in `.env`; until then `/api/ecobank/eligibility` returns a score-only decision. See **Ecobank integration** below.
 
 ## Intentionally not built (protecting MVP scope)
 
@@ -84,6 +84,27 @@ Every scenario belongs to one of **five skill categories** — the axes of the F
 | `critical_thinking` | Critical Thinking |
 
 How scoring works (MVP): each correct answer is worth a flat 10 points. `services/scoringService.js` aggregates a learner's attempts into an overall percentage and a per-category breakdown (each axis reported even at 0%), derives a `level` (Beginner → Fraud Aware → Fraud Prevention Learner → Fraud Prevention Analyst), and — on every submitted answer — persists `total_score` and `level` back to the learner's `profiles` row. Certification unlocks at **70%**. Submitting an answer is idempotent per scenario: a second attempt on the same scenario returns `409`.
+
+## Ecobank integration
+
+`services/ecobankService.js` is a full client for the Ecobank Developer API (Azure APIM, UAT host `apimuat-developer.ecobank.com`). It implements the documented auth model:
+
+- **Bearer token** on every call (`Authorization: Bearer <token>`), plus an Azure APIM **subscription key** (`Ocp-Apim-Subscription-Key`).
+- A **`serviceCode`** in each request body naming the target service.
+- Tokens last ~5 minutes and are **scoped to a single service**, so the client caches one token per product and refreshes it automatically (30s early).
+- Products wired up: **Authentication**, **Account Enquiry**, **Bill Payment** (`callService(product, payload)` plus `accountEnquiry()` / `billPayment()` wrappers).
+
+The code is complete, but the portal-specific values are **not public** — they live behind your logged-in sandbox and must be dropped into `.env` (see `.env.example`) with **no code changes**:
+
+| What to fill | Env var(s) | Where in the portal |
+|---|---|---|
+| Turn integration on | `ECOBANK_ENABLED=true` | — |
+| Auth credentials | `ECOBANK_USERNAME` / `ECOBANK_PASSWORD` / `ECOBANK_CLIENT_ID` / `ECOBANK_CLIENT_SECRET` | Your account / app registration (send only the ones the "Try it" console requires) |
+| Subscription keys | `ECOBANK_SUBKEY_AUTH` / `ECOBANK_SUBKEY_ACCOUNT_ENQUIRY` / `ECOBANK_SUBKEY_BILL_PAYMENT` | Profile → your subscription (one key per subscribed product) |
+| Endpoint paths | `ECOBANK_PATH_AUTH` / `ECOBANK_PATH_ACCOUNT_ENQUIRY` / `ECOBANK_PATH_BILL_PAYMENT` | API description page for each API |
+| Service codes | `ECOBANK_SERVICECODE_AUTH` / `ECOBANK_SERVICECODE_ACCOUNT_ENQUIRY` / `ECOBANK_SERVICECODE_BILL_PAYMENT` | API Service Code page |
+
+Until `ECOBANK_ENABLED=true` and the auth path + subscription key are set, `isEcobankConfigured()` is false and `/api/ecobank/eligibility` returns a score-only decision (never a fabricated bank call). A missing value throws a clear config error rather than calling a guessed endpoint. If your sandbox response wraps the token or fields under different names, that's the one spot to adjust (`extractToken` in the service).
 
 ## Notes on the data layer
 
