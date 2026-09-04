@@ -1,5 +1,6 @@
 import { asyncHandler, successResponse } from '../utils/helpers.js';
 import { Scenario } from '../models/Scenario.js';
+import { Assessment } from '../models/Assessment.js';
 import { submitAnswer, computeOverallScore } from '../services/scoringService.js';
 
 // POST /api/assessments/submit
@@ -23,11 +24,33 @@ export const submitAssessment = asyncHandler(async (req, res) => {
     selectedAnswer,
   });
 
-  successResponse(res, result);
+  successResponse(res, result, 201);
 });
 
 // GET /api/assessments/score
+// Overall fraud-prevention score + per-category skill profile + level.
 export const getMyScore = asyncHandler(async (req, res) => {
   const score = await computeOverallScore(req.user.id);
   successResponse(res, score);
+});
+
+// GET /api/assessments/profile
+// Focused Fraud Prevention Skill Profile for the profile screen.
+export const getMySkillProfile = asyncHandler(async (req, res) => {
+  const { percentage, level, attempts, correctCount, skillProfile } =
+    await computeOverallScore(req.user.id);
+  successResponse(res, {
+    overallPercentage: percentage,
+    level,
+    attempts,
+    correctCount,
+    skillProfile,
+  });
+});
+
+// GET /api/assessments/history
+// The learner's past attempts, most recent first, with scenario context.
+export const getMyHistory = asyncHandler(async (req, res) => {
+  const history = await Assessment.findHistoryByUser(req.user.id);
+  successResponse(res, history);
 });

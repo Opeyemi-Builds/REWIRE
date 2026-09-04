@@ -27,4 +27,17 @@ export const User = {
     if (error) throw Object.assign(new Error(error.message), { status: 500 });
     return data;
   },
+
+  // Persist both the running total and the derived level. Called after each
+  // answer so the learner profile always reflects current performance.
+  async updateProgress(id, { totalScore, level }) {
+    const { data, error } = await supabaseAdmin
+      .from('profiles')
+      .update({ total_score: totalScore, level })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw Object.assign(new Error(error.message), { status: 500 });
+    return data;
+  },
 };
