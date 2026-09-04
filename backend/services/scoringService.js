@@ -4,6 +4,16 @@ import { User } from '../models/User.js';
 const CERTIFICATION_THRESHOLD = 70; // % score needed to unlock certification
 
 export async function submitAnswer({ userId, scenario, selectedAnswer }) {
+  // One attempt per scenario - stops users from re-answering to inflate their
+  // score past the certification threshold.
+  const existing = await Assessment.findByUserAndScenario(userId, scenario.id);
+  if (existing) {
+    throw Object.assign(
+      new Error('You have already answered this scenario.'),
+      { status: 409 }
+    );
+  }
+
   const correct = selectedAnswer === scenario.correct_answer;
   const score = correct ? 10 : 0; // flat scoring for the MVP - tune once real content lands
 

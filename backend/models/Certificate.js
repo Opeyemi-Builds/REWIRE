@@ -1,4 +1,6 @@
-import { supabase, supabaseAdmin } from '../config/db.js';
+// Trusted server reads/writes via the admin client - see the note in
+// models/Module.js.
+import { supabaseAdmin } from '../config/db.js';
 
 export const Certificate = {
   async create({ userId, score }) {
@@ -19,7 +21,7 @@ export const Certificate = {
   },
 
   async findByUser(userId) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('certificates')
       .select('*')
       .eq('user_id', userId)
