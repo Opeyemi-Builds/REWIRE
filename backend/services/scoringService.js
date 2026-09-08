@@ -2,6 +2,7 @@ import { Assessment } from '../models/Assessment.js';
 import { Module } from '../models/Module.js';
 import { Scenario } from '../models/Scenario.js';
 import { User } from '../models/User.js';
+import { generateAssessmentFeedback } from './aiService.js';
 
 const CERTIFICATION_THRESHOLD = 70; // % score needed to unlock certification
 const POINTS_PER_CORRECT = 10; // flat scoring for the MVP - tune once real content lands
@@ -105,6 +106,17 @@ export async function submitAnswer({ userId, scenario, selectedAnswer }) {
     level: summary.level,
   });
 
+  const feedback = generateAssessmentFeedback({
+    scenario,
+    selectedAnswer,
+    correct,
+    learnerScore: {
+      percentage: summary.percentage,
+      level: summary.level,
+    },
+    skillArea: SKILL_CATEGORIES[scenario.category] || null,
+  });
+
   return {
     assessment,
     correct,
@@ -112,6 +124,7 @@ export async function submitAnswer({ userId, scenario, selectedAnswer }) {
     explanation: scenario.explanation,
     category: scenario.category,
     skillArea: SKILL_CATEGORIES[scenario.category] || null,
+    feedback,
     // A snapshot of where the learner stands after this answer.
     score: {
       totalScore: summary.totalScore,

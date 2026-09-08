@@ -20,49 +20,69 @@
 // Configuration (from environment)
 // ---------------------------------------------------------------------------
 
-const BASE_URL = (process.env.ECOBANK_BASE_URL || 'https://apimuat-developer.ecobank.com').replace(/\/$/, '');
-const ENABLED = String(process.env.ECOBANK_ENABLED || 'false').toLowerCase() === 'true';
-const REQUEST_TIMEOUT_MS = Number(process.env.ECOBANK_TIMEOUT_MS || 15000);
+export function getEcobankConfig() {
+  return {
+    enabled: String(process.env.ECOBANK_ENABLED || 'false').toLowerCase() === 'true',
+    baseUrl: (process.env.ECOBANK_BASE_URL || 'https://apimuat-developer.ecobank.com').replace(/\/$/, ''),
+    requestTimeoutMs: Number(process.env.ECOBANK_TIMEOUT_MS || 15000),
+    tokenTtlMs: Number(process.env.ECOBANK_TOKEN_TTL_MS || 5 * 60 * 1000),
+    credentials: {
+      username: process.env.ECOBANK_USERNAME || '',
+      password: process.env.ECOBANK_PASSWORD || '',
+      clientId: process.env.ECOBANK_CLIENT_ID || '',
+      clientSecret: process.env.ECOBANK_CLIENT_SECRET || '',
+    },
+    subscriptionKeys: {
+      authentication: process.env.ECOBANK_SUBKEY_AUTH || '',
+      accountEnquiry: process.env.ECOBANK_SUBKEY_ACCOUNT_ENQUIRY || '',
+      billPayment: process.env.ECOBANK_SUBKEY_BILL_PAYMENT || '',
+    },
+    services: {
+      authentication: {
+        path: process.env.ECOBANK_PATH_AUTH || '',
+        serviceCode: process.env.ECOBANK_SERVICECODE_AUTH || '',
+      },
+      accountEnquiry: {
+        path: process.env.ECOBANK_PATH_ACCOUNT_ENQUIRY || '',
+        serviceCode: process.env.ECOBANK_SERVICECODE_ACCOUNT_ENQUIRY || '',
+      },
+      billPayment: {
+        path: process.env.ECOBANK_PATH_BILL_PAYMENT || '',
+        serviceCode: process.env.ECOBANK_SERVICECODE_BILL_PAYMENT || '',
+      },
+    },
+  };
+}
 
-// Credentials used to mint a token from the Authentication Service. Exactly
-// which of these the auth call needs must be confirmed in the portal's "Try it"
-// console; they are read from env and sent when present.
-const CREDENTIALS = {
-  username: process.env.ECOBANK_USERNAME || '',
-  password: process.env.ECOBANK_PASSWORD || '',
-  clientId: process.env.ECOBANK_CLIENT_ID || '',
-  clientSecret: process.env.ECOBANK_CLIENT_SECRET || '',
-};
+function getRuntimeEcobankState() {
+  const cfg = getEcobankConfig();
+  return {
+    baseUrl: cfg.baseUrl,
+    enabled: cfg.enabled,
+    requestTimeoutMs: cfg.requestTimeoutMs,
+    tokenTtlMs: cfg.tokenTtlMs,
+    credentials: cfg.credentials,
+    subscriptionKeys: cfg.subscriptionKeys,
+    services: {
+      authentication: {
+        path: cfg.services.authentication.path,
+        serviceCode: cfg.services.authentication.serviceCode,
+        subscriptionKey: cfg.subscriptionKeys.authentication,
+      },
+      accountEnquiry: {
+        path: cfg.services.accountEnquiry.path,
+        serviceCode: cfg.services.accountEnquiry.serviceCode,
+        subscriptionKey: cfg.subscriptionKeys.accountEnquiry,
+      },
+      billPayment: {
+        path: cfg.services.billPayment.path,
+        serviceCode: cfg.services.billPayment.serviceCode,
+        subscriptionKey: cfg.subscriptionKeys.billPayment,
+      },
+    },
+  };
+}
 
-// One Azure APIM subscription key per subscribed product.
-const SUBSCRIPTION_KEYS = {
-  authentication: process.env.ECOBANK_SUBKEY_AUTH || '',
-  accountEnquiry: process.env.ECOBANK_SUBKEY_ACCOUNT_ENQUIRY || '',
-  billPayment: process.env.ECOBANK_SUBKEY_BILL_PAYMENT || '',
-};
-
-// Per-service registry: endpoint path + serviceCode. Confirm every value from
-// the portal's API description / "API Service Code" pages.
-const SERVICES = {
-  authentication: {
-    path: process.env.ECOBANK_PATH_AUTH || '',
-    serviceCode: process.env.ECOBANK_SERVICECODE_AUTH || '',
-    subscriptionKey: SUBSCRIPTION_KEYS.authentication,
-  },
-  accountEnquiry: {
-    path: process.env.ECOBANK_PATH_ACCOUNT_ENQUIRY || '',
-    serviceCode: process.env.ECOBANK_SERVICECODE_ACCOUNT_ENQUIRY || '',
-    subscriptionKey: SUBSCRIPTION_KEYS.accountEnquiry,
-  },
-  billPayment: {
-    path: process.env.ECOBANK_PATH_BILL_PAYMENT || '',
-    serviceCode: process.env.ECOBANK_SERVICECODE_BILL_PAYMENT || '',
-    subscriptionKey: SUBSCRIPTION_KEYS.billPayment,
-  },
-};
-
-// Access-token lifetime. Portal states ~5 minutes; we refresh a little early.
-const TOKEN_TTL_MS = Number(process.env.ECOBANK_TOKEN_TTL_MS || 5 * 60 * 1000);
 const TOKEN_SKEW_MS = 30 * 1000; // refresh 30s before expiry
 
 // ---------------------------------------------------------------------------
@@ -72,7 +92,8 @@ const TOKEN_SKEW_MS = 30 * 1000; // refresh 30s before expiry
 // True when enough config is present to actually reach Ecobank. Lets business
 // logic (e.g. eligibility) fall back to a mock in dev without credentials.
 export function isEcobankConfigured() {
-  return ENABLED && Boolean(SERVICES.authentication.path) && Boolean(SUBSCRIPTION_KEYS.authentication);
+  const cfg = getEcobankConfig();
+  return cfg.enabled && Boolean(cfg.services.authentication.path) && Boolean(cfg.subscriptionKeys.authentication);
 }
 
 function ecobankError(message, status = 502, details) {
@@ -80,7 +101,8 @@ function ecobankError(message, status = 502, details) {
 }
 
 function getService(product) {
-  const svc = SERVICES[product];
+  const { services, subscriptionKeys } = getRuntimeEcobankState();
+  const svc = services[product];
   if (!svc) throw ecobankError(`Unknown Ecobank service: ${product}`, 500);
   if (!svc.path) {
     throw ecobankError(
@@ -88,20 +110,21 @@ function getService(product) {
       500
     );
   }
-  if (!svc.subscriptionKey) {
+  if (!svc.subscriptionKey && !subscriptionKeys[product]) {
     throw ecobankError(
       `Ecobank service "${product}" has no subscription key configured (set ECOBANK_SUBKEY_* in .env).`,
       500
     );
   }
-  return svc;
+  return { ...svc, subscriptionKey: svc.subscriptionKey || subscriptionKeys[product] };
 }
 
 // Low-level HTTP: builds the documented headers, enforces a timeout, and
 // normalizes errors/JSON. `subscriptionKey` and `token` are attached when given.
 async function ecobankFetch(path, { method = 'POST', body, token, subscriptionKey } = {}) {
+  const { baseUrl, requestTimeoutMs } = getRuntimeEcobankState();
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
 
   const headers = {
     'Content-Type': 'application/json',
@@ -113,7 +136,7 @@ async function ecobankFetch(path, { method = 'POST', body, token, subscriptionKe
 
   let res;
   try {
-    res = await fetch(`${BASE_URL}${path}`, {
+    res = await fetch(`${baseUrl}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -122,7 +145,7 @@ async function ecobankFetch(path, { method = 'POST', body, token, subscriptionKe
   } catch (err) {
     clearTimeout(timer);
     if (err.name === 'AbortError') {
-      throw ecobankError(`Ecobank request timed out after ${REQUEST_TIMEOUT_MS}ms`, 504);
+      throw ecobankError(`Ecobank request timed out after ${requestTimeoutMs}ms`, 504);
     }
     throw ecobankError(`Ecobank request failed: ${err.message}`, 502);
   }
@@ -154,30 +177,33 @@ function extractToken(response) {
   return response.access_token || response.token || response.accessToken || response.bearerToken || null;
 }
 
-function extractTtlMs(response) {
+function extractTtlMs(response, fallbackMs = 5 * 60 * 1000) {
   const seconds = response?.expires_in ?? response?.expiresIn;
-  return Number.isFinite(Number(seconds)) ? Number(seconds) * 1000 : TOKEN_TTL_MS;
+  return Number.isFinite(Number(seconds)) ? Number(seconds) * 1000 : fallbackMs;
 }
 
 // Mint (or reuse) an access token scoped to `product`. Tokens are cached per
 // product because Ecobank scopes them to a single service.
 export async function getAccessToken(product) {
+  const { tokenTtlMs } = getRuntimeEcobankState();
   const cached = tokenCache.get(product);
   if (cached && cached.expiresAt - TOKEN_SKEW_MS > Date.now()) {
     return cached.token;
   }
 
   const auth = getService('authentication');
-  const target = SERVICES[product];
+  const runtimeServices = getRuntimeEcobankState().services;
+  const target = runtimeServices[product];
+  const credentials = getRuntimeEcobankState().credentials;
 
   // Auth request: send whatever credentials are configured, plus the target
   // service's code so the token is scoped correctly. Confirm exact fields in
   // the portal console and adjust here if needed.
   const body = { serviceCode: target?.serviceCode || auth.serviceCode };
-  if (CREDENTIALS.username) body.username = CREDENTIALS.username;
-  if (CREDENTIALS.password) body.password = CREDENTIALS.password;
-  if (CREDENTIALS.clientId) body.clientId = CREDENTIALS.clientId;
-  if (CREDENTIALS.clientSecret) body.clientSecret = CREDENTIALS.clientSecret;
+  if (credentials.username) body.username = credentials.username;
+  if (credentials.password) body.password = credentials.password;
+  if (credentials.clientId) body.clientId = credentials.clientId;
+  if (credentials.clientSecret) body.clientSecret = credentials.clientSecret;
 
   const response = await ecobankFetch(auth.path, {
     method: 'POST',
@@ -190,7 +216,7 @@ export async function getAccessToken(product) {
     throw ecobankError('Ecobank authentication succeeded but no token was found in the response', 502, response);
   }
 
-  tokenCache.set(product, { token, expiresAt: Date.now() + extractTtlMs(response) });
+  tokenCache.set(product, { token, expiresAt: Date.now() + extractTtlMs(response, tokenTtlMs) });
   return token;
 }
 
@@ -256,6 +282,10 @@ export async function checkFinancialEligibility({ userId, fraudPreventionScore, 
     recommendedProduct: eligible ? 'Standard Digital Savings Account' : null,
     source: 'rewire-score', // becomes 'ecobank-account-enquiry' when live data is used
   };
+
+  if (!isEcobankConfigured()) {
+    return result;
+  }
 
   if (accountNumber && isEcobankConfigured()) {
     try {

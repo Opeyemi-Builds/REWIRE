@@ -9,6 +9,7 @@ import scenarioRoutes from './routes/scenarioRoutes.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
 import certificateRoutes from './routes/certificateRoutes.js';
 import ecobankRoutes from './routes/ecobankRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -35,6 +36,7 @@ app.use('/api/scenarios', scenarioRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/ecobank', ecobankRoutes);
+app.use('/api/ai', aiRoutes);
 
 // --- 404 handler (no route matched) ---
 app.use((req, res) => {
